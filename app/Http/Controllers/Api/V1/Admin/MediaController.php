@@ -29,7 +29,11 @@ class MediaController extends Controller
 
     public function store(StoreMediaRequest $request): JsonResponse
     {
-        $media = $this->mediaService->store($request->file('file'));
+        try {
+            $media = $this->mediaService->store($request->file('file'));
+        } catch (\Throwable $e) {
+            return $this->error('Upload failed: the file could not be stored on the server. Check that storage/app/public is writable and the server upload limits are sufficient.', 422);
+        }
 
         return $this->success(new MediaResource($media), 'Media uploaded successfully.', 201);
     }

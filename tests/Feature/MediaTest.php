@@ -47,6 +47,27 @@ it('rejects non-image files and oversized files', function () {
     $this->assertDatabaseCount('media', 0);
 });
 
+it('serves uploaded files through the storage fallback route', function () {
+    Storage::fake('public');
+
+    Storage::disk('public')->put('backend/uploads/2026/09/served.jpg', 'image-bytes');
+
+    $this->get('/storage/backend/uploads/2026/09/served.jpg')
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/jpeg')
+        ->assertHeader('Content-Length', '11');
+});
+
+it('rejects unsafe or unknown storage paths through the fallback route', function () {
+    Storage::fake('public');
+
+    Storage::disk('public')->put('backend/uploads/2026/09/real.jpg', 'image-bytes');
+
+    $this->get('/storage/../.env')->assertNotFound();
+    $this->get('/storage/assets/logo.jpg')->assertNotFound();
+    $this->get('/storage/backend/uploads/2026/09/missing.jpg')->assertNotFound();
+});
+
 it('deletes media and detaches it from events and posts', function () {
     $admin = actingAsAdmin();
     Storage::fake('public');

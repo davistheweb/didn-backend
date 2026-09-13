@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Media;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 class MediaService
 {
@@ -16,6 +17,10 @@ class MediaService
         $directory = 'backend/uploads/'.now()->format('Y/m');
 
         $path = $file->store($directory, $disk);
+
+        if ($path === false) {
+            throw new RuntimeException('The file could not be written to storage. Make sure the storage/app/public directory is writable.');
+        }
 
         return Media::create([
             'disk' => $disk,

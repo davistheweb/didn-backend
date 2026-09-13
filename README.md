@@ -112,6 +112,32 @@ with `php artisan storage:link`).
 - The API returns usable public URLs in every response (`image` on events/posts,
   `url` on media), e.g. `https://api.directimpactnetwork.com/storage/backend/uploads/2026/09/ab12cd34.jpg`
 
+### Production / shared hosting (e.g. Hostinger)
+
+Two mechanisms guarantee uploaded images keep working on shared hosts:
+
+1. **Auto-healed symlink.** On every request the app re-creates
+   `public/storage` as a *relative* link (`../storage/app/public`) when it is
+   missing or broken. This fixes deployments (FTP/zip copies, git clones) that
+   carry an absolute symlink pointing at another machine (like a dev laptop) or
+   have no link at all.
+2. **Built-in `/storage` route.** The `public` disk is configured with
+   `serve => true`, so if the symlink can't exist at all, Laravel itself streams
+   the file at `/storage/...`. (The scaffolded private `local` disk is no longer
+   served at `/storage`, because that shadowed real uploads with a 403/404.)
+
+Diagnose "images not uploading/showing" on the live site:
+
+- Confirm the request actually succeeded: the upload response must be `201` and
+  contain `data.url`. A `422` means validation/limits, a `500` usually means the
+  `storage` directory isn't writable.
+- Uploaded files live in **`storage/app/public/backend/uploads/{Y}/{m}`** — not
+  `storage/backend`. If `public/storage` appears as a real folder after a bad
+  FTP transfer, delete it and reload so the app can re-create the link.
+- Set `APP_URL` in `.env` to the live HTTPS domain so generated URLs are correct.
+- Matching DB access: Media writes both a file and a DB row, so a misconfigured
+  `.env` (wrong DB) makes uploads appear to do nothing.
+
 ### Upload limits
 
 PHP's runtime limits trump the API's 5MB rule — if `upload_max_filesize` is
