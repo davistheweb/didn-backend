@@ -7,6 +7,7 @@ use App\Http\Requests\Event\StoreEventRequest;
 use App\Http\Requests\Event\UpdateEventRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
+use App\Services\MediaService;
 use App\Services\RichTextSanitizer;
 use App\Services\SlugService;
 use App\Traits\SortsEvents;
@@ -20,6 +21,7 @@ class EventController extends Controller
     public function __construct(
         private readonly SlugService $slugs,
         private readonly RichTextSanitizer $sanitizer,
+        private readonly MediaService $mediaService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -60,6 +62,8 @@ class EventController extends Controller
 
         $event->load('featuredImage');
 
+        $this->mediaService->reconcileSlugFolder(MediaService::CONTEXT_EVENT, $event);
+
         return $this->success(new EventResource($event), 'Event created successfully.', 201);
     }
 
@@ -82,7 +86,18 @@ class EventController extends Controller
             $data['content'] = $this->sanitizer->sanitize($data['content']);
         }
 
+        $previousFeatured = $event->featuredImage;
+
         $event->update($data);
+
+        $event->unsetRelation('featuredImage');
+
+        $this->mediaService->reconcileSlugFolder(MediaService::CONTEXT_EVENT, $event);
+
+        if ($previousFeatured !== null && $event->featured_image_id !== $previousFeatured->id) {
+            $this->mediaService->deleteCoverIfUnreferenced($previousFeatured, $event);
+        }
+
         $event->load('featuredImage');
 
         return $this->success(new EventResource($event), 'Event updated successfully.');
@@ -91,6 +106,8 @@ class EventController extends Controller
     public function destroy(Event $event): JsonResponse
     {
         $event->delete();
+
+        $this->mediaService->deleteContentDirectory(MediaService::CONTEXT_EVENT, $event);
 
         return $this->success(null, 'Event deleted successfully.');
     }

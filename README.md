@@ -103,14 +103,17 @@ php artisan db:seed --class=DevContentSeeder   # dev only
 
 ## Storage / images
 
-Uploads are stored on the **`public` disk** (`storage/app/public`) under a
-dedicated **`backend/` folder** and served via the `/storage` symlink (create
-with `php artisan storage:link`).
+Uploads are stored on the **`public` disk** (`storage/app/public`) in
+**per-content folders** and served via the `/storage` symlink (create with
+`php artisan storage:link`).
 
-- Image files → `storage/app/public/backend/uploads/{Y}/{m}/<random>.jpg`
-- The database only stores relative paths + metadata. **Internal paths are never exposed.**
+- Blog images → `storage/app/public/blogs/{post-slug}/cover-<random>.jpg` / `image-<random>.jpg`
+- Event images → `storage/app/public/events/{event-slug}/cover-<random>.jpg` / `image-<random>.jpg`
+- Uploads made before a slug is known land in a `.../_pending/{uuid}/` folder and
+  are moved into the record's slug folder the first time the record is saved.
+- The database only stores relative paths + metadata. **Absolute filesystem paths are never exposed.**
 - The API returns usable public URLs in every response (`image` on events/posts,
-  `url` on media), e.g. `https://api.directimpactnetwork.com/storage/backend/uploads/2026/09/ab12cd34.jpg`
+  `url` + storage-relative `path` on media), e.g. `https://api.directimpactnetwork.com/storage/blogs/annual-report/cover-a1b2c3d4.jpg`
 
 ### Production / shared hosting (e.g. Hostinger)
 
@@ -129,11 +132,13 @@ Two mechanisms guarantee uploaded images keep working on shared hosts:
 Diagnose "images not uploading/showing" on the live site:
 
 - Confirm the request actually succeeded: the upload response must be `201` and
-  contain `data.url`. A `422` means validation/limits, a `500` usually means the
-  `storage` directory isn't writable.
-- Uploaded files live in **`storage/app/public/backend/uploads/{Y}/{m}`** — not
-  `storage/backend`. If `public/storage` appears as a real folder after a bad
-  FTP transfer, delete it and reload so the app can re-create the link.
+  contain `data.url` and `data.path`. A `422` means validation/limits, a `500`
+  usually means the `storage` directory isn't writable. The upload endpoint
+  requires `type` (`blog`|`event`) and optionally `slug` + `usage` (`cover`|`content`).
+- Uploaded files live in **`storage/app/public/blogs/{slug}`** or
+  **`storage/app/public/events/{slug}`** — not `storage/backend`. If
+  `public/storage` appears as a real folder after a bad FTP transfer, delete it
+  and reload so the app can re-create the link.
 - Set `APP_URL` in `.env` to the live HTTPS domain so generated URLs are correct.
 - Matching DB access: Media writes both a file and a DB row, so a misconfigured
   `.env` (wrong DB) makes uploads appear to do nothing.

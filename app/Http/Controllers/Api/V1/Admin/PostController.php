@@ -7,6 +7,7 @@ use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Http\Resources\PostResource;
 use App\Models\Post;
+use App\Services\MediaService;
 use App\Services\RichTextSanitizer;
 use App\Services\SlugService;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,7 @@ class PostController extends Controller
     public function __construct(
         private readonly SlugService $slugs,
         private readonly RichTextSanitizer $sanitizer,
+        private readonly MediaService $mediaService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -61,6 +63,8 @@ class PostController extends Controller
 
         $post->load(['author', 'coverImage']);
 
+        $this->mediaService->reconcileSlugFolder(MediaService::CONTEXT_BLOG, $post);
+
         return $this->success(new PostResource($post), 'Post created successfully.', 201);
     }
 
@@ -83,7 +87,18 @@ class PostController extends Controller
             $data['content'] = $this->sanitizer->sanitize($data['content']);
         }
 
+        $previousCover = $post->coverImage;
+
         $post->update($data);
+
+        $post->unsetRelation('coverImage');
+
+        $this->mediaService->reconcileSlugFolder(MediaService::CONTEXT_BLOG, $post);
+
+        if ($previousCover !== null && $post->cover_image_id !== $previousCover->id) {
+            $this->mediaService->deleteCoverIfUnreferenced($previousCover, $post);
+        }
+
         $post->load(['author', 'coverImage']);
 
         return $this->success(new PostResource($post), 'Post updated successfully.');
@@ -92,6 +107,8 @@ class PostController extends Controller
     public function destroy(Post $post): JsonResponse
     {
         $post->delete();
+
+        $this->mediaService->deleteContentDirectory(MediaService::CONTEXT_BLOG, $post);
 
         return $this->success(null, 'Post deleted successfully.');
     }
