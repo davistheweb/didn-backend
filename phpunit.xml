@@ -32,6 +32,12 @@
         <env name="DB_PASSWORD" value=""/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="RESEND_API_KEY" value=""/>
+        <env name="MAIL_FROM_ADDRESS" value="info@didn.test"/>
+        <env name="MAIL_FROM_NAME" value="Direct Impact Development Network"/>
+        <env name="CONTACT_NOTIFICATION_EMAIL" value="admin@didn.test"/>
+        <env name="CONTACT_FROM_ADDRESS" value="contact@didn.test"/>
+        <env name="PUBLIC_WEBSITE_URL" value="https://www.didn.test"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

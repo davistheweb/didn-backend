@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Services\Email\ResendEmailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
@@ -65,6 +66,30 @@ function actingAsAdmin(array $attributes = []): User
     Sanctum::actingAs($admin);
 
     return $admin;
+}
+
+/**
+ * Bind a Resend spy that records sends without touching the network.
+ *
+ * The real unsubscribeUrl() implementation is kept so jobs and services can
+ * build links. Inspect recorded sends via $spy->sent.
+ */
+function fakeResendEmailService(): ResendEmailService
+{
+    $spy = new class extends ResendEmailService
+    {
+        public array $sent = [];
+
+        public function send(array $to, string $subject, string $html, ?string $from = null, ?array $replyTo = null): void
+        {
+            $from ??= config('services.resend.from_address');
+            $this->sent[] = compact('to', 'subject', 'html', 'from', 'replyTo');
+        }
+    };
+
+    app()->instance(ResendEmailService::class, $spy);
+
+    return $spy;
 }
 
 /**

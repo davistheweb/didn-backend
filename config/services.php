@@ -20,6 +20,11 @@ return [
 
     'resend' => [
         'key' => env('RESEND_API_KEY'),
+        'from_name' => env('MAIL_FROM_NAME', 'Direct Impact Development Network'),
+        'from_address' => env('MAIL_FROM_ADDRESS', 'info@directimpactnetwork.org'),
+        'contact_from_address' => env('CONTACT_FROM_ADDRESS', 'contact@directimpactnetwork.org'),
+        'contact_notification_email' => env('CONTACT_NOTIFICATION_EMAIL'),
+        'public_website_url' => env('PUBLIC_WEBSITE_URL', 'https://www.directimpactnetwork.org'),
     ],
 
     'ses' => [

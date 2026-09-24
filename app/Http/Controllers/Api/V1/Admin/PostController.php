@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Post\StorePostRequest;
 use App\Http\Requests\Post\UpdatePostRequest;
 use App\Http\Resources\PostResource;
+use App\Jobs\SendBlogNewsletterJob;
 use App\Models\Post;
 use App\Services\MediaService;
 use App\Services\RichTextSanitizer;
@@ -65,6 +66,10 @@ class PostController extends Controller
 
         $this->mediaService->reconcileSlugFolder(MediaService::CONTEXT_BLOG, $post);
 
+        if ($post->status === Post::STATUS_PUBLISHED) {
+            SendBlogNewsletterJob::dispatch($post);
+        }
+
         return $this->success(new PostResource($post), 'Post created successfully.', 201);
     }
 
@@ -100,6 +105,10 @@ class PostController extends Controller
         }
 
         $post->load(['author', 'coverImage']);
+
+        if ($post->wasChanged('status') && $post->status === Post::STATUS_PUBLISHED) {
+            SendBlogNewsletterJob::dispatch($post);
+        }
 
         return $this->success(new PostResource($post), 'Post updated successfully.');
     }

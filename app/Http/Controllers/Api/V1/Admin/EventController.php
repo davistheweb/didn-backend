@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Event\StoreEventRequest;
 use App\Http\Requests\Event\UpdateEventRequest;
 use App\Http\Resources\EventResource;
+use App\Jobs\SendEventNewsletterJob;
 use App\Models\Event;
 use App\Services\MediaService;
 use App\Services\RichTextSanitizer;
@@ -64,6 +65,10 @@ class EventController extends Controller
 
         $this->mediaService->reconcileSlugFolder(MediaService::CONTEXT_EVENT, $event);
 
+        if ($event->is_published) {
+            SendEventNewsletterJob::dispatch($event);
+        }
+
         return $this->success(new EventResource($event), 'Event created successfully.', 201);
     }
 
@@ -99,6 +104,10 @@ class EventController extends Controller
         }
 
         $event->load('featuredImage');
+
+        if ($event->wasChanged('is_published') && $event->is_published) {
+            SendEventNewsletterJob::dispatch($event);
+        }
 
         return $this->success(new EventResource($event), 'Event updated successfully.');
     }

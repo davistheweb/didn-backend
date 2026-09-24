@@ -61,6 +61,11 @@ php artisan serve          # http://localhost:8000
 | `ADMIN_EMAIL` | Email for the seeded admin account. | `admin@didn.org` |
 | `ADMIN_PASSWORD` | Password for the seeded admin account (min 8 chars). | … |
 | `SEED_DEMO_CONTENT` | Seed clearly-marked `[Demo]` events/posts (`db:seed`). | `true` |
+| `RESEND_API_KEY` | Resend API key. Outbound email (contact + newsletter). Sending is skipped with a logged warning when empty. | `re_…` |
+| `CONTACT_NOTIFICATION_EMAIL` | Inbox that receives contact-form notifications. Falls back to `MAIL_FROM_ADDRESS` when empty. | `ambfaithful.official@gmail.com` |
+| `MAIL_FROM_ADDRESS` | Sender address for newsletter/welcome email. | `info@directimpactnetwork.org` |
+| `CONTACT_FROM_ADDRESS` | From address for contact-form notifications. | `contact@directimpactnetwork.org` |
+| `PUBLIC_WEBSITE_URL` | Public site base URL used to build article/event links in newsletter email. | `https://www.directimpactnetwork.org` |
 
 > **CORS is intentionally not `*`.** List every real origin in the **PHP-style
 > array** `ALLOWED_ORIGINS`:
@@ -86,6 +91,7 @@ Tables created by the API:
 - `media` – uploaded files metadata
 - `events` – conference/campaign/training/webinar
 - `posts` – blog articles
+- `newsletter_subscribers` – newsletter opt-ins (`subscribed` | `unsubscribed`, unique token)
 
 ### Seeders
 
@@ -265,6 +271,53 @@ Prefix: `/api/v1`
 | GET | `/posts/{slug}` | Single published post |
 
 Public endpoints never return drafts, unpublished content, or admin data.
+
+### Public contact & newsletter
+
+| Method | URI | Description |
+|---|---|---|
+| POST | `/contact` | Submit the contact form (throttled, 5/min). Emails the visitor's message to `CONTACT_NOTIFICATION_EMAIL` with the visitor as Reply-To. |
+| POST | `/newsletter/subscribe` | Subscribe an address (throttled, 5/min). Idempotent; resubscribing an unsubscribed address is allowed and sends a new welcome email. |
+| GET | `/newsletter/unsubscribe/{token}` | Unsubscribe by link token. The token is the credential — the address is never required. |
+
+Contact payload (`POST /api/v1/contact`):
+
+```json
+{ "full_name": "Jane Okoro", "phone_number": "+2348012345678", "email": "jane@example.com", "message": "I'd like to volunteer." }
+```
+
+Subscribe payload (`POST /api/v1/newsletter/subscribe`):
+
+```json
+{ "email": "jane@example.com" }
+```
+
+Newsletter emails are sent by **info@** (see `MAIL_FROM_ADDRESS`); contact alerts
+are sent by **contact@** (`CONTACT_FROM_ADDRESS`) with the visitor's address as the
+Reply-To (`reply_to`) — never as the From. Every newsletter email carries a
+per-subscriber unsubscribe link (`GET /newsletter/unsubscribe/{token}`).
+
+### Admin newsletter subscribers
+
+| Method | URI | Auth | Description |
+|---|---|---|---|
+| GET | `/admin/newsletter/subscribers` | ✓ | List subscribers; filter `?status=`, `?search=`, `?per_page=` |
+| GET | `/admin/newsletter/subscribers/{id}` | ✓ | Show one subscriber |
+| DELETE | `/admin/newsletter/subscribers/{id}` | ✓ | Mark subscriber unsubscribed (record is kept) |
+
+### Auto newsletter notifications
+
+Publishing triggers a queued email blast to all `subscribed` addresses:
+
+- **Blog** – on the draft → `published` transition (create or update), the
+  `SendBlogNewsletterJob` sends a branded article email from **info@**.
+- **Events** – on `is_published` flipping to `true`, the `SendEventNewsletterJob`
+  sends a branded event email from **info@**.
+
+Both jobs are dispatched after the transition only (re-editing an already
+published item does **not** re-send), run in chunks of 100 subscribers, and log —
+never fail — on per-recipient Resend errors. They must be processed by a queue
+worker (`QUEUE_CONNECTION=database` → `php artisan queue:work`).
 
 ---
 
@@ -572,7 +625,8 @@ php artisan test
 
 Coverage includes: authentication, profile/password, event CRUD + dates +
 visibility, post CRUD + draft/publish behaviour + search/filtering, media upload
-validation/URLs/deletion, public-vs-admin visibility, and consistent response
+validation/URLs/deletion, public-vs-admin visibility, contact + newsletter
+subscribe/unsubscribe, publish-triggered newsletter jobs, and consistent response
 envelopes.
 
 Format code:
@@ -590,13 +644,17 @@ app/
 ├── Http/
 │   ├── Controllers/Api/V1/
 │   │   ├── Auth/          login, logout, me
-│   │   ├── Admin/         profile, password, events, posts, media (protected)
-│   │   └── Public/        events, posts (read-only)
+│   │   ├── Admin/         profile, password, events, posts, media, newsletter subscribers (protected)
+│   │   └── Public/        events, posts, contact, newsletter (read-only + submit)
 │   ├── Requests/          form request validation
 │   └── Resources/         API resource shapes
-├── Models/                User, Media, Event, Post
-├── Services/              RichTextSanitizer, MediaService, SlugService
+├── Jobs/                  SendBlogNewsletterJob, SendEventNewsletterJob (queued)
+├── Models/                User, Media, Event, Post, NewsletterSubscriber
+├── Services/
+│   ├── Email/             ResendEmailService, ContactEmailService, NewsletterEmailService
+│   └── ...                RichTextSanitizer, MediaService, SlugService
 └── Traits/                ApiResponse, SortsEvents
+resources/views/emails/    branded email templates (layout, contact, newsletter-welcome, blog-published, event-published)
 routes/api.php             all /api/v1 routes
 config/purifier.php        Tiptap HTML whitelist
 config/cors.php            CORS origins (env-driven)
@@ -606,6 +664,6 @@ config/cors.php            CORS origins (env-driven)
 
 ## Roadmap notes
 
-The API is intentionally limited to AUTH, PROFILE, EVENTS, BLOG, MEDIA and the
-public read endpoints. Donations, volunteers, newsletters, partners, projects,
-and staff management are out of scope and were not added.
+The API is intentionally limited to AUTH, PROFILE, EVENTS, BLOG, MEDIA, EMAIL
+(contact + newsletter) and the public read endpoints. Donations, volunteers,
+partners, projects, and staff management are out of scope and were not added.

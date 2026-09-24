@@ -2,11 +2,14 @@
 
 use App\Http\Controllers\Api\V1\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Api\V1\Admin\MediaController as AdminMediaController;
+use App\Http\Controllers\Api\V1\Admin\NewsletterSubscriberController as AdminNewsletterSubscriberController;
 use App\Http\Controllers\Api\V1\Admin\PasswordController;
 use App\Http\Controllers\Api\V1\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Api\V1\Admin\ProfileController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\Public\ContactController;
 use App\Http\Controllers\Api\V1\Public\EventController as PublicEventController;
+use App\Http\Controllers\Api\V1\Public\NewsletterController;
 use App\Http\Controllers\Api\V1\Public\PostController as PublicPostController;
 use Illuminate\Support\Facades\Route;
 
@@ -50,5 +53,18 @@ Route::prefix('v1')->group(function () {
     Route::prefix('posts')->group(function () {
         Route::get('/', [PublicPostController::class, 'index']);
         Route::get('{slug}', [PublicPostController::class, 'show']);
+    });
+
+    Route::post('contact', [ContactController::class, 'store'])->middleware('throttle:5,1');
+
+    Route::prefix('newsletter')->group(function () {
+        Route::post('subscribe', [NewsletterController::class, 'subscribe'])->middleware('throttle:5,1');
+        Route::get('unsubscribe/{token}', [NewsletterController::class, 'unsubscribe']);
+    });
+
+    Route::middleware('auth:sanctum')->prefix('admin/newsletter/subscribers')->group(function () {
+        Route::get('/', [AdminNewsletterSubscriberController::class, 'index']);
+        Route::get('{subscriber}', [AdminNewsletterSubscriberController::class, 'show']);
+        Route::delete('{subscriber}', [AdminNewsletterSubscriberController::class, 'destroy']);
     });
 });
