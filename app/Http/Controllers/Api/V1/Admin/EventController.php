@@ -8,6 +8,7 @@ use App\Http\Requests\Event\UpdateEventRequest;
 use App\Http\Resources\EventResource;
 use App\Jobs\SendEventNewsletterJob;
 use App\Models\Event;
+use App\Services\Email\AdminAlertEmailService;
 use App\Services\MediaService;
 use App\Services\RichTextSanitizer;
 use App\Services\SlugService;
@@ -23,6 +24,7 @@ class EventController extends Controller
         private readonly SlugService $slugs,
         private readonly RichTextSanitizer $sanitizer,
         private readonly MediaService $mediaService,
+        private readonly AdminAlertEmailService $alerts,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -67,6 +69,7 @@ class EventController extends Controller
 
         if ($event->is_published) {
             SendEventNewsletterJob::dispatch($event);
+            $this->alerts->eventPublished($event);
         }
 
         return $this->success(new EventResource($event), 'Event created successfully.', 201);
@@ -107,6 +110,7 @@ class EventController extends Controller
 
         if ($event->wasChanged('is_published') && $event->is_published) {
             SendEventNewsletterJob::dispatch($event);
+            $this->alerts->eventPublished($event);
         }
 
         return $this->success(new EventResource($event), 'Event updated successfully.');

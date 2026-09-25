@@ -62,7 +62,7 @@ php artisan serve          # http://localhost:8000
 | `ADMIN_PASSWORD` | Password for the seeded admin account (min 8 chars). | … |
 | `SEED_DEMO_CONTENT` | Seed clearly-marked `[Demo]` events/posts (`db:seed`). | `true` |
 | `RESEND_API_KEY` | Resend API key. Outbound email (contact + newsletter). Sending is skipped with a logged warning when empty. | `re_…` |
-| `CONTACT_NOTIFICATION_EMAIL` | Inbox that receives contact-form notifications. Falls back to `MAIL_FROM_ADDRESS` when empty. | `ambfaithful.official@gmail.com` |
+| `CONTACT_NOTIFICATION_EMAIL` | Inbox that receives contact-form notifications **and automatic publish alerts**. Falls back to `MAIL_FROM_ADDRESS` when empty. | `ambfaithful.official@gmail.com` |
 | `MAIL_FROM_ADDRESS` | Sender address for newsletter/welcome email. | `info@directimpactnetwork.org` |
 | `CONTACT_FROM_ADDRESS` | From address for contact-form notifications. | `contact@directimpactnetwork.org` |
 | `PUBLIC_WEBSITE_URL` | Public site base URL used to build article/event links in newsletter email. | `https://www.directimpactnetwork.org` |
@@ -318,6 +318,12 @@ Both jobs are dispatched after the transition only (re-editing an already
 published item does **not** re-send), run in chunks of 100 subscribers, and log —
 never fail — on per-recipient Resend errors. They must be processed by a queue
 worker (`QUEUE_CONNECTION=database` → `php artisan queue:work`).
+
+**Admin publish alerts.** On every publish (blog or event) a confirmation email
+(«New blog post/event published…») is **sent synchronously** to
+`CONTACT_NOTIFICATION_EMAIL` with a link to the live article/event. This is
+deliberately not queued, so the admin always receives it even if no queue worker
+is running. The subscriber blast remains queued and requires a worker.
 
 ---
 
@@ -626,8 +632,8 @@ php artisan test
 Coverage includes: authentication, profile/password, event CRUD + dates +
 visibility, post CRUD + draft/publish behaviour + search/filtering, media upload
 validation/URLs/deletion, public-vs-admin visibility, contact + newsletter
-subscribe/unsubscribe, publish-triggered newsletter jobs, and consistent response
-envelopes.
+subscribe/unsubscribe, publish-triggered newsletter jobs + admin publish alerts,
+and consistent response envelopes.
 
 Format code:
 
@@ -651,10 +657,10 @@ app/
 ├── Jobs/                  SendBlogNewsletterJob, SendEventNewsletterJob (queued)
 ├── Models/                User, Media, Event, Post, NewsletterSubscriber
 ├── Services/
-│   ├── Email/             ResendEmailService, ContactEmailService, NewsletterEmailService
+│   ├── Email/             ResendEmailService, ContactEmailService, NewsletterEmailService, AdminAlertEmailService
 │   └── ...                RichTextSanitizer, MediaService, SlugService
 └── Traits/                ApiResponse, SortsEvents
-resources/views/emails/    branded email templates (layout, contact, newsletter-welcome, blog-published, event-published)
+resources/views/emails/    branded email templates (layout, contact, newsletter-welcome, blog-published, event-published, admin-post-published, admin-event-published)
 routes/api.php             all /api/v1 routes
 config/purifier.php        Tiptap HTML whitelist
 config/cors.php            CORS origins (env-driven)

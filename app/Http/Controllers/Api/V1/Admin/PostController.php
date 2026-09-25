@@ -8,6 +8,7 @@ use App\Http\Requests\Post\UpdatePostRequest;
 use App\Http\Resources\PostResource;
 use App\Jobs\SendBlogNewsletterJob;
 use App\Models\Post;
+use App\Services\Email\AdminAlertEmailService;
 use App\Services\MediaService;
 use App\Services\RichTextSanitizer;
 use App\Services\SlugService;
@@ -20,6 +21,7 @@ class PostController extends Controller
         private readonly SlugService $slugs,
         private readonly RichTextSanitizer $sanitizer,
         private readonly MediaService $mediaService,
+        private readonly AdminAlertEmailService $alerts,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -68,6 +70,7 @@ class PostController extends Controller
 
         if ($post->status === Post::STATUS_PUBLISHED) {
             SendBlogNewsletterJob::dispatch($post);
+            $this->alerts->postPublished($post);
         }
 
         return $this->success(new PostResource($post), 'Post created successfully.', 201);
@@ -108,6 +111,7 @@ class PostController extends Controller
 
         if ($post->wasChanged('status') && $post->status === Post::STATUS_PUBLISHED) {
             SendBlogNewsletterJob::dispatch($post);
+            $this->alerts->postPublished($post);
         }
 
         return $this->success(new PostResource($post), 'Post updated successfully.');
