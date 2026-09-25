@@ -1,7 +1,7 @@
 {{-- Shared DIDN email shell: logo header, content section, unsubscribe + footer. --}}
 @php
     $organizationName = config('services.resend.from_name', 'Direct Impact Development Network');
-    $logoUrl = rtrim((string) config('services.resend.public_website_url', 'https://www.directimpactnetwork.org'), '/').'/logo.png';
+    $logoUrl = rtrim((string) config('services.resend.public_website_url', 'https://www.directimpactnetwork.org'), '/').'/whiteLogo.png';
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -14,7 +14,7 @@
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
     <div style="width:100%;background-color:#f4f4f5;padding:32px 0;">
         <div style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
-            <div style="background-color:#0b3d2e;padding:28px 32px;text-align:center;">
+            <div style="background-color:#45a113;padding:28px 32px;text-align:center;">
                 <img src="{{ $logoUrl }}" alt="{{ $organizationName }}" style="max-width:180px;height:auto;border:0;display:inline-block;">
             </div>
             <div style="padding:32px;color:#18181b;font-size:15px;line-height:1.6;">

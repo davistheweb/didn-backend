@@ -1,7 +1,7 @@
 @extends('emails.layout')
 
 @section('content')
-    <h1 style="margin:0 0 16px;font-size:22px;color:#0b3d2e;">Welcome to the DIDN newsletter</h1>
+    <h1 style="margin:0 0 16px;font-size:22px;color:#45a113;">Welcome to the DIDN newsletter</h1>
     <p style="margin:0 0 16px;">
         Thank you for subscribing to updates from the Direct Impact Development Network.
     </p>

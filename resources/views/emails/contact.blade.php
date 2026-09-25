@@ -1,7 +1,7 @@
 @extends('emails.layout')
 
 @section('content')
-    <h1 style="margin:0 0 16px;font-size:22px;color:#0b3d2e;">New contact form message</h1>
+    <h1 style="margin:0 0 16px;font-size:22px;color:#45a113;">New contact form message</h1>
     <p style="margin:0 0 24px;">A visitor to directimpactnetwork.org has submitted the contact form.</p>
 
     <div style="margin-bottom:16px;">
